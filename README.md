@@ -1,290 +1,337 @@
 # 📞 Twilio IVR Call & SMS Confirmation Automation
 
-> **End-to-end voice + SMS automation built with n8n Cloud and Twilio**
+> **Production-style n8n automation assessment — programmable voice, IVR, DTMF, webhooks and SMS synchronization.**
 
-[![n8n](https://img.shields.io/badge/n8n-Cloud-orange?logo=n8n)](https://n8n.io/)
-[![Twilio](https://img.shields.io/badge/Twilio-Voice%20%26%20Messaging-F22F46?logo=twilio)](https://www.twilio.com/)
-[![Workflow](https://mohammad-shaheed.app.n8n.cloud/assistant/88918ebe-6578-4a62-8eb1-a6458a8e74dc-blue)]()
-[![Status](https://img.shields.io/badge/Status-Assessment%20Project-success)]()
+<p align="center">
 
-## 🧭 Overview
+[![▶ View Demo](https://img.shields.io/badge/▶%20View%20Demo-Loom-625DF5?style=for-the-badge&logo=loom&logoColor=white)](https://www.loom.com/share/6b9e96648b5d417eb01f4575389f815d)
+[![⚙ Open Workflow](https://img.shields.io/badge/⚙%20Open%20Workflow-n8n-FF6D5A?style=for-the-badge&logo=n8n&logoColor=white)](https://mohammad-shaheed.app.n8n.cloud/workflow/IvKfTEs5ja0fN8DV)
+[![📄 Project Report](https://img.shields.io/badge/📄%20Project%20Report-PDF-DC2626?style=for-the-badge&logo=adobeacrobatreader&logoColor=white)](./Twilio_IVR_Call_SMS_Confirmation_Automation_Report.pdf)
+[![⬇ Workflow JSON](https://img.shields.io/badge/⬇%20Workflow%20JSON-Download-111827?style=for-the-badge&logo=json&logoColor=white)](./Twilio%20IVR%20Call%20%26%20SMS%20Confirmation.json)
 
-This project implements a complete **Interactive Voice Response (IVR) and SMS confirmation workflow** using **n8n Cloud** and **Twilio APIs**.
+</p>
 
-The automation:
+<p align="center">
 
-1. Starts an outbound call through the Twilio Calls API.
-2. Returns TwiML that greets the recipient and asks them to **press 1**.
-3. Captures the DTMF keypad response through a Twilio webhook.
-4. Routes the response through an n8n **IF** node.
-5. Sends a confirmation SMS when the recipient presses **1**.
-6. Returns a spoken confirmation and records execution details in n8n/Twilio logs.
+[![n8n](https://img.shields.io/badge/n8n-Cloud-FF6D5A?style=flat-square&logo=n8n&logoColor=white)](https://n8n.io/)
+[![Twilio](https://img.shields.io/badge/Twilio-Voice%20%26%20SMS-F22F46?style=flat-square&logo=twilio&logoColor=white)](https://www.twilio.com/)
+[![Status](https://img.shields.io/badge/Status-Assessment%20Project-success?style=flat-square)](#)
 
-This repository contains the workflow export, project report, and demonstration recording used for the assessment submission.
+</p>
+
+---
+
+## 🚀 Project Overview
+
+This project implements an **Interactive Voice Response (IVR) + SMS confirmation workflow** using **n8n Cloud** and the **Twilio REST APIs**.
+
+The workflow demonstrates an end-to-end automation lifecycle:
+
+**Trigger → Outbound Call → TwiML → IVR → DTMF → Webhook → Conditional Routing → SMS → Execution Monitoring**
+
+### What the automation does
+
+1. Starts an outbound Twilio voice call from n8n.
+2. Twilio requests instructions from an n8n webhook.
+3. n8n returns TwiML containing a spoken IVR prompt.
+4. The recipient is asked to **press 1**.
+5. Twilio sends the DTMF response to a second n8n webhook.
+6. n8n evaluates the received digit.
+7. When the digit is `1`, the workflow triggers the Twilio Messages API.
+8. A confirmation SMS is sent and the workflow execution can be reviewed in n8n/Twilio logs.
+
+---
+
+## 🎯 Assessment Objectives Covered
+
+| Requirement | Implementation |
+|---|---|
+| Twilio account & phone configuration | Twilio Console |
+| Outbound voice call | Twilio Calls API |
+| Authentication | n8n HTTP Basic Auth credential |
+| IVR prompt | TwiML `<Say>` |
+| DTMF collection | TwiML `<Gather>` |
+| Webhook processing | n8n Webhook nodes |
+| Conditional logic | n8n IF node |
+| SMS confirmation | Twilio Messages API |
+| Execution monitoring | n8n Executions |
+| Security awareness | HTTPS + `X-Twilio-Signature` guidance |
 
 ---
 
 ## 🏗️ Architecture
 
 ```text
-┌────────────────────┐
-│   n8n Manual       │
-│      Trigger       │
-└─────────┬──────────┘
-          │
+┌──────────────────────┐
+│     n8n Manual       │
+│       Trigger        │
+└──────────┬───────────┘
+           │
+           ▼
+┌──────────────────────┐
+│ Twilio Calls API     │
+│ HTTP Request          │
+└──────────┬───────────┘
+           │
+           ▼
+       ☎ OUTBOUND CALL
+           │
+           ▼
+┌──────────────────────┐
+│ Twilio Answer Webhook│
+│ n8n → TwiML Response │
+└──────────┬───────────┘
+           │
+           ▼
+┌──────────────────────┐
+│ <Say> + <Gather>     │
+│ "Press 1 to confirm" │
+└──────────┬───────────┘
+           │
+        DTMF = 1
+           │
+           ▼
+┌──────────────────────┐
+│ Twilio Digits Webhook│
+│ Digits / CallSid     │
+│ From / To            │
+└──────────┬───────────┘
+           │
+           ▼
+      ┌─────────────┐
+      │ Pressed 1 ? │
+      └──────┬──────┘
+          YES│  │NO
+             │  │
+             ▼  ▼
+     ┌──────────┐ ┌────────────────┐
+     │ SMS API  │ │ Not Confirmed  │
+     └────┬─────┘ │ TwiML Response │
+          │       └────────────────┘
           ▼
-┌────────────────────┐
-│ HTTP Request       │
-│ Twilio Calls API   │
-└─────────┬──────────┘
-          │
-          ▼
-     ☎️ OUTBOUND CALL
-          │
-          ▼
-┌────────────────────┐
-│ n8n Answer Webhook  │
-│ Returns TwiML       │
-└─────────┬──────────┘
-          │
-          ▼
-┌────────────────────┐
-│ <Say> + <Gather>   │
-│ "Press 1..."       │
-└─────────┬──────────┘
-          │
-      DTMF = 1
-          │
-          ▼
-┌────────────────────┐
-│ n8n Digits Webhook │
-│ Digits / CallSid   │
-│ From / To          │
-└─────────┬──────────┘
-          │
-          ▼
-   ┌───────────────┐
-   │  Pressed 1 ?  │
-   └──────┬───┬────┘
-          │YES│NO
-          ▼   ▼
-   ┌─────────┐ ┌──────────────┐
-   │ Twilio  │ │ Not Confirmed│
-   │ SMS API │ │ Response     │
-   └────┬────┘ └──────────────┘
-        │
-        ▼
-   ✅ Confirmation
-        SMS
+   📱 Confirmation SMS
 ```
 
 ---
 
 ## 🔄 Workflow Components
 
-| Component | Purpose |
+| Node | Role |
 |---|---|
-| **Manual Trigger** | Starts the test call workflow from n8n |
-| **HTTP Request — Calls API** | Creates the outbound Twilio voice call |
-| **Answer Webhook** | Receives Twilio's request and returns TwiML |
-| **TwiML Response** | Defines greeting and IVR behavior |
-| **`<Gather>`** | Captures one DTMF keypad digit |
-| **Digits Webhook** | Receives keypad/call metadata |
-| **IF — Pressed 1?** | Routes confirmation vs. non-confirmation |
-| **HTTP Request — Messages API** | Sends confirmation SMS |
-| **Respond to Webhook** | Returns final call instructions |
-| **n8n Execution History** | Provides workflow-level verification |
+| **Start Call** | Manual entry point for testing |
+| **Initiate Twilio Call** | Creates the outbound voice call |
+| **Twilio Answer Webhook** | Receives Twilio's call request |
+| **Return IVR TwiML** | Returns the voice/IVR instructions |
+| **Twilio Digits Webhook** | Receives DTMF and call metadata |
+| **Pressed 1?** | Routes the confirmation path |
+| **Respond Confirmed** | Returns confirmation TwiML |
+| **Send Confirmation SMS** | Sends the confirmation message through Twilio |
+| **Respond Not Confirmed** | Handles invalid/non-confirmation input |
 
 ---
 
-## 🧩 Core TwiML
+## 🧩 TwiML IVR
 
-The IVR uses TwiML to provide the call instructions:
+The IVR is built with Twilio Markup Language (TwiML):
 
 ```xml
 <Response>
   <Gather numDigits="1"
-          action="YOUR_N8N_WEBHOOK_URL"
+          action="YOUR_N8N_DIGITS_WEBHOOK"
           method="POST"
           timeout="10">
-    <Say>Hello. Press 1 to confirm your appointment.</Say>
+    <Say voice="alice">
+      Hello. Press 1 to confirm your appointment.
+    </Say>
   </Gather>
 
-  <Say>We did not receive any input. Goodbye.</Say>
+  <Say voice="alice">
+    We did not receive any input. Goodbye.
+  </Say>
 </Response>
 ```
 
-### TwiML elements used
+### TwiML elements
 
 - **`<Response>`** — root container for Twilio call instructions.
-- **`<Say>`** — text-to-speech instruction.
-- **`<Gather>`** — collects keypad/DTMF input and posts it to a webhook.
+- **`<Say>`** — converts text into spoken audio.
+- **`<Gather>`** — collects keypad/DTMF input and posts it to the configured webhook.
+- **`<Dial>`** — a TwiML capability that can connect a call to another number; it is part of the assessment concepts but is not required by this implementation.
 
 ---
 
 ## 🔐 Credentials & Security
 
-The workflow authenticates to Twilio using **HTTP Basic Authentication** with:
+The workflow uses **HTTP Basic Authentication** in n8n for Twilio API requests.
 
-- Account SID
-- Auth Token
+### Credentials
 
-Secrets are intentionally **not documented in this repository**.
+- Twilio Account SID
+- Twilio Auth Token
+- Twilio phone number / sender configuration
 
-### Security practices
+**No Auth Token or other secret is intentionally stored in this repository.**
 
-- Do not commit Twilio Auth Tokens or API keys.
-- Keep credentials inside n8n Credentials.
-- Use HTTPS webhook endpoints.
-- Validate Twilio's `X-Twilio-Signature` in production.
-- Avoid exposing real recipient numbers in public screenshots.
-- Replace sample values with your own credentials locally.
+### Security checklist
 
-> **Never store production secrets in workflow JSON, README files, screenshots, or public Git history.**
+- ✅ Keep Twilio credentials inside n8n Credentials.
+- ✅ Use HTTPS webhook endpoints.
+- ✅ Never commit Auth Tokens/API keys.
+- ✅ Avoid publishing real recipient numbers in screenshots.
+- ⚠️ For production, validate Twilio's `X-Twilio-Signature`.
+- ⚠️ Review webhook input validation and replay/idempotency controls.
+
+> **Important:** The Twilio Console URL supplied for testing is account-specific. It is intentionally **not embedded in this public README**. Use the Twilio Console directly after signing in.
 
 ---
 
 ## 🧪 Expected Execution
 
-### Successful confirmation path
+### Confirmation path
 
 ```text
-Manual Trigger
-      ↓
-Twilio Call API
-      ↓
-Outbound Call
-      ↓
+Start Call
+   ↓
+Twilio Calls API
+   ↓
+Outbound Voice Call
+   ↓
+Answer Webhook
+   ↓
 TwiML Greeting
-      ↓
+   ↓
 Recipient presses 1
-      ↓
+   ↓
 Digits Webhook
-      ↓
+   ↓
 IF: Digits == "1"
-      ↓
+   ↓
 Twilio Messages API
-      ↓
+   ↓
 Confirmation SMS
-      ↓
-Successful execution
 ```
 
 ### Non-confirmation path
 
-If the received digit is not `1`, the workflow follows the non-confirmation branch and returns a spoken message instead of sending the confirmation SMS.
+If the received digit is not `1`, the workflow follows the non-confirmation branch and returns a spoken response instead of sending the confirmation SMS.
 
 ---
 
-## 📦 Repository Contents
+## 📂 Repository Contents
 
-| File | Description |
+| Resource | Purpose |
 |---|---|
-| `Twilio IVR Call & SMS Confirmation.json` | Exported n8n workflow |
-| `Twilio_IVR_Call_SMS_Confirmation_Automation_Report.pdf` | Formal assessment report |
-| `Screenrecording_20260918_180732.mp4` | Project demonstration recording |
+| [⚙️ n8n Workflow](https://mohammad-shaheed.app.n8n.cloud/workflow/IvKfTEs5ja0fN8DV) | Live workflow in n8n Cloud |
+| [▶️ Loom Demo](https://www.loom.com/share/6b9e96648b5d417eb01f4575389f815d) | Project demonstration |
+| [📄 Assignment Report](./Twilio_IVR_Call_SMS_Confirmation_Automation_Report.pdf) | Formal documentation |
+| [⬇️ Workflow JSON](./Twilio%20IVR%20Call%20%26%20SMS%20Confirmation.json) | Importable n8n workflow export |
+| [🎥 Local Recording](./Screenrecording_20260918_180732.mp4) | Repository copy of the demonstration recording |
+| [📊 n8n Executions](https://mohammad-shaheed.app.n8n.cloud/workflow/IvKfTEs5ja0fN8DV/executions) | Workflow execution history |
 
 ---
 
-## ▶️ How to Import & Run
+## ▶️ Setup & Run
 
 ### Prerequisites
 
 - n8n Cloud or self-hosted n8n
 - Twilio account
-- Twilio phone number with the required capabilities
-- Verified/eligible destination number for testing where required
-- Public HTTPS URLs for n8n webhooks
+- Twilio voice-capable number
+- Messaging-capable Twilio sender where SMS testing is supported
+- Public HTTPS webhook endpoints
 
-### Setup
+### Steps
 
-1. Import the JSON workflow into n8n.
-2. Create an HTTP Basic Auth credential containing your Twilio Account SID and Auth Token.
-3. Update the recipient number and Twilio sender number with your own test values.
-4. Confirm the webhook URLs match your n8n environment.
-5. Activate the workflow if required for live webhook execution.
-6. Trigger **Start Call**.
-7. Answer the call and press **1**.
-8. Inspect the **Twilio Digits Webhook**, **Pressed 1?**, and **Send Confirmation SMS** executions.
-9. Verify the call/message activity in the Twilio Console.
+1. Download the [workflow JSON](./Twilio%20IVR%20Call%20%26%20SMS%20Confirmation.json).
+2. Import it into n8n.
+3. Create an HTTP Basic Auth credential using your own Twilio Account SID and Auth Token.
+4. Configure your own recipient and sender values.
+5. Verify the webhook URLs point to your n8n environment.
+6. Activate the workflow.
+7. Run **Start Call**.
+8. Answer the call and press **1**.
+9. Review the webhook and SMS executions.
+10. Verify the corresponding activity in Twilio Console.
 
 ---
 
 ## 📊 Verification Checklist
 
-- [x] Twilio Console configured
-- [x] Twilio voice call request implemented
-- [x] TwiML IVR implemented
-- [x] DTMF input collection implemented
-- [x] n8n webhook processing implemented
-- [x] Conditional routing implemented
-- [x] SMS confirmation implemented
-- [x] n8n execution monitoring documented
-- [x] Project report included
-- [x] Demonstration recording included
+- [x] Outbound Twilio call request
+- [x] TwiML IVR response
+- [x] DTMF input collection
+- [x] n8n webhook processing
+- [x] Conditional routing
+- [x] SMS API integration
+- [x] Execution monitoring
+- [x] Assessment report
+- [x] Demo recording
 
 ---
 
-## ⚠️ Known Limitations
+## ⚠️ Testing & Provider Limitations
 
-Twilio trial accounts can impose restrictions on calling and messaging, including destination verification and regional messaging requirements.
+Twilio trial accounts and regional messaging configurations can restrict calling or SMS delivery.
 
-For **+91 Indian destinations**, SMS delivery may be restricted depending on the Twilio account/sender configuration. A Twilio messaging error such as **572006** may therefore indicate a provider-side delivery/configuration limitation rather than an n8n logic failure.
+For **+91 Indian destinations**, SMS delivery can depend on the Twilio account, sender configuration, registration/compliance requirements, and destination eligibility. A Twilio error such as **572006** should be investigated in the Twilio Console rather than automatically treated as an n8n workflow failure.
 
-When a delivery error occurs:
+For assessment evidence, distinguish clearly between:
 
-1. Check the Twilio Console error details.
-2. Verify the destination and sender configuration.
-3. Check trial-account restrictions and recipient verification requirements.
-4. Review the Twilio message logs.
-5. Record the limitation accurately in assessment evidence.
+- **Workflow execution success**
+- **Twilio API request success/failure**
+- **Actual SMS delivery status**
+
+This keeps the project documentation technically accurate.
 
 ---
 
 ## 🛡️ Production Hardening
 
-For a production deployment, the workflow can be extended with:
+Possible production enhancements include:
 
-- Twilio webhook signature validation
-- Input sanitization and validation
-- Retry/error handling
-- Structured logging
+- Twilio `X-Twilio-Signature` validation
+- Strict webhook input validation
+- Retry and error-handling strategy
 - Call status callbacks
 - SMS delivery-status callbacks
 - Idempotency protection
+- Structured logging
 - Centralized configuration
 - Environment-specific credentials
-- Observability and alerting
+- Monitoring and alerting
 
 ---
 
-## 🎥 Demonstration
+## 🎥 Demo
 
-The repository includes a screen recording demonstrating the project workflow.
+**Primary demo:**  
+[▶ Watch the Loom demonstration](https://www.loom.com/share/6b9e96648b5d417eb01f4575389f815d)
 
-**Recording:** `Screenrecording_20260918_180732.mp4`
+The Loom link is preferred for reviewers because it opens the demonstration directly without requiring them to download the repository's MP4 file.
 
 ---
 
 ## 📄 Documentation
 
-The formal assignment submission report is included in the repository as:
+**Formal report:**  
+[📄 Open the Assignment Submission Report](./Twilio_IVR_Call_SMS_Confirmation_Automation_Report.pdf)
 
-**Twilio IVR Call & SMS Confirmation Automation — Assignment Submission Report**
-
----
-
-## 🎯 Assessment Coverage
-
-This implementation addresses the core assessment concepts:
-
-**Credential Management → REST API Integration → Outbound Voice Automation → TwiML → IVR → DTMF → Webhooks → Conditional Routing → SMS Automation → Execution Monitoring → Security Awareness**
+The report documents the project architecture, implementation flow, TwiML, webhook/security concepts, execution monitoring, limitations, and submission evidence.
 
 ---
 
-## 👤 Project
+## 👤 Author
 
-**Author:** Shaik Mohammad Shaheed  
-**Repository:** `TWILIO-IVR-CALL-SMS-CONFIRMATION-AUTOMATION`
+**Shaik Mohammad Shaheed**
 
-Built as an n8n automation assessment project combining programmable voice, webhooks, DTMF interaction, and SMS synchronization.
+AI & Automation | n8n | API Integration | Webhooks | AI Agents | Generative AI
+
+---
+
+<p align="center">
+
+**Built with n8n + Twilio**
+
+[![GitHub](https://img.shields.io/badge/View%20Repository-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/shaikshahid777/TWILIO-IVR-CALL-SMS-CONFIRMATION-AUTOMATION)
+
+</p>
