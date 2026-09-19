@@ -1,0 +1,343 @@
+{
+  "name": "Twilio IVR Call & SMS Confirmation",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "10100d59-8c13-4b91-98c2-f856d5ad89a9",
+      "name": "Start Call",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -944,
+        176
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.twilio.com/2010-04-01/Accounts/ACxxxxxxxxxxxxxxxxxxxxxx/Calls.json",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "To",
+              "value": "+91xxxxxxxxxx"
+            },
+            {
+              "name": "From",
+              "value": "+17372212163"
+            },
+            {
+              "name": "Url",
+              "value": "https://mohammad-shaheed.app.n8n.cloud/webhook/twilio-answer"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "aff136e8-e102-41ad-864d-d125f7335025",
+      "name": "Initiate Twilio Call",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -688,
+        304
+      ],
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "KM6NUHjViMa8nXkm",
+          "name": "Unnamed credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "twilio-answer",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "91815160-b074-4d8a-8452-9d38babaa8b8",
+      "name": "Twilio Answer Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -192,
+        256
+      ],
+      "webhookId": "2afa4450-cf92-4880-b512-3e2148a4955c"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Response>\n  <Gather numDigits=\"1\" action=\"https://mohammad-shaheed.app.n8n.cloud/webhook/twilio-digits\" method=\"POST\" timeout=\"10\">\n    <Say voice=\"alice\">Hello. Press 1 to confirm your appointment.</Say>\n  </Gather>\n  <Say voice=\"alice\">We did not receive any input. Goodbye.</Say>\n</Response>",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/xml"
+              }
+            ]
+          }
+        }
+      },
+      "id": "a266b35d-872e-4ff1-9ad4-8d44ddfa6a0e",
+      "name": "Return IVR TwiML",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        80,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "twilio-digits",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "8f1a4e61-a88b-49fa-add1-8d75434b71b4",
+      "name": "Twilio Digits Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        688,
+        240
+      ],
+      "webhookId": "f883be5e-e1c5-4577-ac76-d64829673245"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "digit-is-one",
+              "leftValue": "={{ $json.body.Digits }}",
+              "rightValue": "1",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "47319b28-2c6f-4750-9c8f-9dbd5b4f47a6",
+      "name": "Pressed 1?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1104,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Response>\n  <Say voice=\"alice\">Thank you. Your confirmation has been received. Goodbye.</Say>\n</Response>",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/xml"
+              }
+            ]
+          }
+        }
+      },
+      "id": "396d1bba-2012-4213-a57a-8e514c1e9bb8",
+      "name": "Respond Confirmed",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1552,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.twilio.com/2010-04-01/Accounts/ACxxxxxxxxxxxxxxxxxxxxxx/Messages.json",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "To",
+              "value": "={{ $(\"Twilio Digits Webhook\").item.json.body.To }}"
+            },
+            {
+              "name": "From",
+              "value": "={{ $(\"Twilio Digits Webhook\").item.json.body.From }}"
+            },
+            {
+              "name": "Body",
+              "value": "Thank you! Your confirmation has been received successfully."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "6696736b-a95e-48a3-ba05-1952d4ca2895",
+      "name": "Send Confirmation SMS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1328,
+        128
+      ],
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "KM6NUHjViMa8nXkm",
+          "name": "Unnamed credential"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Response>\n  <Say voice=\"alice\">No valid confirmation was received. Goodbye.</Say>\n</Response>",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/xml"
+              }
+            ]
+          }
+        }
+      },
+      "id": "f55c2a26-f97f-4280-9da3-e384aabcec67",
+      "name": "Respond Not Confirmed",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1328,
+        320
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Start Call": {
+      "main": [
+        [
+          {
+            "node": "Initiate Twilio Call",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Twilio Answer Webhook": {
+      "main": [
+        [
+          {
+            "node": "Return IVR TwiML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Twilio Digits Webhook": {
+      "main": [
+        [
+          {
+            "node": "Pressed 1?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pressed 1?": {
+      "main": [
+        [
+          {
+            "node": "Respond Confirmed",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Not Confirmed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond Confirmed": {
+      "main": [
+        [
+          {
+            "node": "Send Confirmation SMS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "6753b004-aa06-4c30-a0b0-99bde1f8375f",
+  "meta": {
+    "instanceId": "6abe9931809978352319cb21622ffdff38accce530bfc6c488633e9f18461d78"
+  },
+  "nodeGroups": [
+    {
+      "id": "dab3f6ed-2086-488a-9e5e-2bed1dbbac1c",
+      "name": "Initiate outbound call",
+      "nodeIds": [
+        "aff136e8-e102-41ad-864d-d125f7335025"
+      ],
+      "description": "Starts an outbound Twilio call to the recipient, pointing the TwiML URL at this workflow."
+    },
+    {
+      "id": "ca4a9e9f-1654-4d49-9e02-ed54ba4abb79",
+      "name": "Return IVR TwiML",
+      "nodeIds": [
+        "a266b35d-872e-4ff1-9ad4-8d44ddfa6a0e"
+      ],
+      "description": "Answers the call with TwiML that speaks a greeting and gathers one keypad digit (press 1 to confirm)."
+    },
+    {
+      "id": "5b9226f6-7053-4bf1-aaec-b3dcddfd634b",
+      "name": "Capture digit & confirm",
+      "nodeIds": [
+        "47319b28-2c6f-4750-9c8f-9dbd5b4f47a6",
+        "6696736b-a95e-48a3-ba05-1952d4ca2895",
+        "396d1bba-2012-4213-a57a-8e514c1e9bb8",
+        "f55c2a26-f97f-4280-9da3-e384aabcec67"
+      ],
+      "description": "Receives the pressed digit; if it is 1, sends a confirmation SMS and speaks a thank-you, otherwise reports no confirmation."
+    }
+  ],
+  "id": "IvKfTEs5ja0fN8DV",
+  "tags": []
+}
